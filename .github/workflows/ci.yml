@@ -16,6 +16,14 @@ jobs:
     # a Linux runner would silently skip them.
     runs-on: macos-latest
 
+    env:
+      # Publishing signs unconditionally, and the integration consumers below need
+      # artifacts in the local repository, so CI needs the signing key too. No Maven
+      # Central credentials here — this job never uploads anything.
+      ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
+      ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{ secrets.SIGNING_KEY_ID }}
+      ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_KEY_PASSWORD }}
+
     steps:
       - uses: actions/checkout@v4
 

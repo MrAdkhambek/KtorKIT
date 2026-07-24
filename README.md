@@ -1,8 +1,31 @@
 # KtorKIT
 
+[![Maven Central](https://img.shields.io/maven-central/v/com.adkhambek.ktor.kit/runtime)](https://central.sonatype.com/namespace/com.adkhambek.ktor.kit)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/MrAdkhambek/KtorKIT/publish.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A Kotlin Compiler Plugin that turns annotated interfaces into type-safe [Ktor](https://ktor.io/) HTTP clients — inspired by Retrofit, powered by K2 FIR and IR.
 
 Define your API as an interface, annotate methods with HTTP verbs, and let the compiler generate the implementation at compile time. No reflection, no code generation task, no annotation processor — just a compiler plugin.
+
+```kotlin
+@ContributesAPI
+interface PostsApi {
+    @GET("posts/{id}")
+    suspend fun getPost(@Path("id") id: Int): Post
+}
+
+val api = KtorClient("https://example.com/", HttpClient(CIO)).create<PostsApi>()
+val post = api.getPost(1)
+```
+
+Add the plugin — it pulls in the runtime for you:
+
+```kotlin
+plugins {
+    id("com.adkhambek.ktor.kit") version "<latest-version>"
+}
+```
 
 ## Features
 
@@ -19,20 +42,20 @@ Define your API as an interface, annotate methods with HTTP verbs, and let the c
 - Dynamic URLs with `@Url`
 - Per-API base URLs via `@ContributesAPI(baseUrl = "...")`
 - Automatic JSON serialization and deserialization via `kotlinx.serialization`
-- Rich return types: `T`, `T?`, `List<T>`, `Map<K, V>`, `Response<T>`, `Flow<T>`, `String`
-- Compile-time diagnostics for common mistakes (missing verbs, mismatched path placeholders, misuse of form/multipart annotations, non-serializable types)
+- Rich return types: `T`, `T?`, `List<T>`, `Map<K, V>`, `Response<T>`, `Flow<T>`, `String`, `Unit`
+- Twelve compile-time diagnostics for mistakes that would otherwise fail silently or at runtime
 
 ## Versions
 
-| Component                       | Version         |
-|---------------------------------|-----------------|
-| **KtorKIT**                     | `0.1.0`         |
-| **Kotlin**                      | `2.4.10`        |
-| **Ktor**                        | `3.5.1`         |
-| **kotlinx-serialization-json**  | `1.11.0`        |
-| **kotlinx-coroutines**          | `1.11.0`        |
-| **Gradle**                      | `9.6.1`         |
-| **JVM Toolchain**               | `21`            |
+| Component                      | Version            |
+|--------------------------------|--------------------|
+| **KtorKIT**                    | latest — see badge |
+| **Kotlin**                     | `2.4.10`           |
+| **Ktor**                       | `3.5.1`            |
+| **kotlinx-serialization-json** | `1.11.0`           |
+| **kotlinx-coroutines**         | `1.11.0`           |
+| **Gradle**                     | `9.6.1`            |
+| **JVM Toolchain**              | `21`               |
 
 Published as `com.adkhambek.ktor.kit` on Maven Central.
 
@@ -46,12 +69,12 @@ KtorKIT must be built against the same Kotlin version your project compiles with
 
 ## Supported Platforms
 
-| Tier    | Targets                                                                 |
-|---------|-------------------------------------------------------------------------|
-| JVM     | `jvm`                                                                   |
-| JS      | `js(IR)` — Node.js                                                      |
-| Apple   | `iosX64`, `iosArm64`, `iosSimulatorArm64`, `macosX64`, `macosArm64`, `watchosArm64`, `watchosSimulatorArm64`, `tvosArm64`, `tvosSimulatorArm64` |
-| Other   | `linuxX64`, `mingwX64`                                                  |
+| Tier  | Targets                                                                                                                                         |
+|-------|-------------------------------------------------------------------------------------------------------------------------------------------------|
+| JVM   | `jvm`                                                                                                                                           |
+| JS    | `js(IR)` — Node.js                                                                                                                              |
+| Apple | `iosX64`, `iosArm64`, `iosSimulatorArm64`, `macosX64`, `macosArm64`, `watchosArm64`, `watchosSimulatorArm64`, `tvosArm64`, `tvosSimulatorArm64` |
+| Other | `linuxX64`, `mingwX64`                                                                                                                          |
 
 ## Project Structure
 
@@ -88,7 +111,7 @@ ktorkit/
 plugins {
     kotlin("jvm") version "2.4.10"
     kotlin("plugin.serialization") version "2.4.10"
-    id("com.adkhambek.ktor.kit") version "0.1.0"
+    id("com.adkhambek.ktor.kit") version "<latest-version>"
 }
 ```
 
@@ -156,15 +179,15 @@ val post = api.getPost(id = 1)       // Post
 
 Applied to functions inside a `@ContributesAPI` interface. Each function must have exactly one verb annotation.
 
-| Annotation   | Description          |
-|-------------|----------------------|
-| `@GET`      | HTTP GET request     |
-| `@POST`     | HTTP POST request    |
-| `@PUT`      | HTTP PUT request     |
-| `@DELETE`   | HTTP DELETE request  |
-| `@PATCH`    | HTTP PATCH request   |
-| `@HEAD`     | HTTP HEAD request    |
-| `@OPTIONS`  | HTTP OPTIONS request |
+| Annotation | Description          |
+|------------|----------------------|
+| `@GET`     | HTTP GET request     |
+| `@POST`    | HTTP POST request    |
+| `@PUT`     | HTTP PUT request     |
+| `@DELETE`  | HTTP DELETE request  |
+| `@PATCH`   | HTTP PATCH request   |
+| `@HEAD`    | HTTP HEAD request    |
+| `@OPTIONS` | HTTP OPTIONS request |
 
 ```kotlin
 @GET("users/{id}")
@@ -173,47 +196,47 @@ suspend fun getUser(@Path("id") id: Int): User
 
 ### Parameters
 
-| Annotation       | Target    | Description                                          |
-|-----------------|-----------|------------------------------------------------------|
-| `@Path("name")` | Parameter | Replaces `{name}` in the URL path template. Values are percent-encoded. |
-| `@Query("name")`| Parameter | Adds a query parameter `?name=value`                  |
-| `@QueryMap`     | Parameter | Adds all entries from a `Map<String, Any?>` as query params |
-| `@Body`         | Parameter | Sets the request body                                 |
-| `@Header("name")`| Parameter| Adds a request header                                |
-| `@HeaderMap`    | Parameter | Adds all entries from a `Map<String, Any?>` as headers|
-| `@Field("name")`| Parameter | Adds a form field (requires `@FormUrlEncoded`)        |
-| `@FieldMap`     | Parameter | Adds all entries from a `Map<String, Any?>` as form fields (requires `@FormUrlEncoded`) |
-| `@Part("name")` | Parameter | Adds a multipart part (requires `@Multipart`)         |
-| `@Part(value = "name", fileName = "f.txt")` | Parameter | Adds a multipart part as a file upload; pair with `ByteArray` |
-| `@Url`          | Parameter | Overrides the entire request URL                      |
+| Annotation                                  | Target    | Description                                                                             |
+|---------------------------------------------|-----------|-----------------------------------------------------------------------------------------|
+| `@Path("name")`                             | Parameter | Replaces `{name}` in the URL path template. Values are percent-encoded.                 |
+| `@Query("name")`                            | Parameter | Adds a query parameter `?name=value`                                                    |
+| `@QueryMap`                                 | Parameter | Adds all entries from a `Map<String, Any?>` as query params                             |
+| `@Body`                                     | Parameter | Sets the request body                                                                   |
+| `@Header("name")`                           | Parameter | Adds a request header                                                                   |
+| `@HeaderMap`                                | Parameter | Adds all entries from a `Map<String, Any?>` as headers                                  |
+| `@Field("name")`                            | Parameter | Adds a form field (requires `@FormUrlEncoded`)                                          |
+| `@FieldMap`                                 | Parameter | Adds all entries from a `Map<String, Any?>` as form fields (requires `@FormUrlEncoded`) |
+| `@Part("name")`                             | Parameter | Adds a multipart part (requires `@Multipart`)                                           |
+| `@Part(value = "name", fileName = "f.txt")` | Parameter | Adds a multipart part as a file upload; pair with `ByteArray`                           |
+| `@Url`                                      | Parameter | Overrides the entire request URL                                                        |
 
 Null values are dropped for `@Query`, `@QueryMap`, `@Header`, `@HeaderMap`, `@Field`, `@FieldMap`, and `@Part`.
 
 ### Class-Level
 
-| Annotation                       | Description                                         |
-|----------------------------------|-----------------------------------------------------|
-| `@ContributesAPI`                | Marks an interface for implementation generation     |
+| Annotation                       | Description                                              |
+|----------------------------------|----------------------------------------------------------|
+| `@ContributesAPI`                | Marks an interface for implementation generation         |
 | `@ContributesAPI(baseUrl = "…")` | Sets a per-API base URL (overrides `KtorClient.baseUrl`) |
 
 ### Function-Level
 
-| Annotation                          | Description                                       |
-|-------------------------------------|---------------------------------------------------|
-| `@Headers("X-Key: value", …)`      | Adds static headers to every call of this function |
-| `@FormUrlEncoded`                   | Sends the request body as `application/x-www-form-urlencoded` |
-| `@Multipart`                        | Sends the request body as `multipart/form-data`    |
+| Annotation                    | Description                                                   |
+|-------------------------------|---------------------------------------------------------------|
+| `@Headers("X-Key: value", …)` | Adds static headers to every call of this function            |
+| `@FormUrlEncoded`             | Sends the request body as `application/x-www-form-urlencoded` |
+| `@Multipart`                  | Sends the request body as `multipart/form-data`               |
 
 ## Request Bodies
 
 `@Body` behaves differently depending on the parameter type:
 
 | Parameter type          | Behavior                                                              |
-|------------------------|-----------------------------------------------------------------------|
-| `String`               | Sent verbatim; content type left to Ktor's default                     |
-| Any `@Serializable` `T`| Encoded to JSON at compile time; `Content-Type: application/json` set   |
-| `List<T>`, `Map<K, V>` | Encoded to a JSON array / object                                       |
-| `T?`                   | Encoded as JSON, `null` becomes the literal `null`                     |
+|-------------------------|-----------------------------------------------------------------------|
+| `String`                | Sent verbatim; content type left to Ktor's default                    |
+| Any `@Serializable` `T` | Encoded to JSON at compile time; `Content-Type: application/json` set |
+| `List<T>`, `Map<K, V>`  | Encoded to a JSON array / object                                      |
+| `T?`                    | Encoded as JSON, `null` becomes the literal `null`                    |
 
 ```kotlin
 @ContributesAPI
@@ -277,18 +300,18 @@ skips blank ones.
 
 Functions can return any of the following:
 
-| Return Type         | Behavior                                                        |
-|--------------------|-----------------------------------------------------------------|
-| `String`           | Returns the raw response body as a string                        |
+| Return Type        | Behavior                                                          |
+|--------------------|-------------------------------------------------------------------|
+| `String`           | Returns the raw response body as a string                         |
 | `T`                | Deserializes the response body as `T` using kotlinx.serialization |
-| `T?`               | Deserializes, accepting a JSON `null`                            |
-| `List<T>`          | Deserializes a JSON array                                        |
-| `Map<K, V>`        | Deserializes a JSON object as a map                              |
-| `Response<String>` | Wraps the raw body with HTTP status and headers                  |
-| `Response<T>`      | Wraps a deserialized body with HTTP status and headers           |
-| `Flow<String>`     | Streams the body as raw lines                                    |
-| `Flow<T>`          | Streams the body, decoding one JSON value per line               |
-| `Unit`             | Performs the request and discards the body                       |
+| `T?`               | Deserializes, accepting a JSON `null`                             |
+| `List<T>`          | Deserializes a JSON array                                         |
+| `Map<K, V>`        | Deserializes a JSON object as a map                               |
+| `Response<String>` | Wraps the raw body with HTTP status and headers                   |
+| `Response<T>`      | Wraps a deserialized body with HTTP status and headers            |
+| `Flow<String>`     | Streams the body as raw lines                                     |
+| `Flow<T>`          | Streams the body, decoding one JSON value per line                |
+| `Unit`             | Performs the request and discards the body                        |
 
 Generic types nest, so `List<Map<String, Int>>` and `Response<List<Post>>` both work.
 
@@ -383,20 +406,28 @@ fun main() = runBlocking {
 
 The compiler plugin validates your API definitions and reports errors at compile time:
 
-| Error | Cause |
-|-------|-------|
-| `@ContributesAPI may only be applied to an interface` | Applied to a class, object, or abstract class |
-| `must declare exactly one HTTP verb annotation` | Function has no `@GET`/`@POST`/etc. |
-| `declares more than one HTTP verb annotation` | Function has multiple verb annotations |
-| `@Path("x") has no matching {x} placeholder` | `@Path` name doesn't match any `{placeholder}` in the URL |
-| `URL template contains {x} but no @Path("x")` | URL has a `{placeholder}` with no corresponding `@Path` parameter |
-| `@Field/@FieldMap requires the function to be annotated @FormUrlEncoded` | Form parameters would otherwise be silently dropped |
-| `@Part requires the function to be annotated @Multipart` | Multipart parts would otherwise be silently dropped |
-| `Function declares both @FormUrlEncoded and @Multipart` | Two conflicting body encodings on one function |
-| `@Body cannot be combined with @FormUrlEncoded or @Multipart` | The encoded form wins, so the body would be silently dropped |
-| `Parameter has no KtorKit annotation` | The argument would never be sent |
-| `Parameter declares more than one KtorKit binding annotation` | Which one wins would be arbitrary |
-| `cannot build a serializer for 'X'` | A return type or `@Body` type is not `@Serializable` |
+| Error                                                                    | Cause                                                             |
+|--------------------------------------------------------------------------|-------------------------------------------------------------------|
+| `@ContributesAPI may only be applied to an interface`                    | Applied to a class, object, or abstract class                     |
+| `must declare exactly one HTTP verb annotation`                          | Function has no `@GET`/`@POST`/etc.                               |
+| `declares more than one HTTP verb annotation`                            | Function has multiple verb annotations                            |
+| `@Path("x") has no matching {x} placeholder`                             | `@Path` name doesn't match any `{placeholder}` in the URL         |
+| `URL template contains {x} but no @Path("x")`                            | URL has a `{placeholder}` with no corresponding `@Path` parameter |
+| `@Field/@FieldMap requires the function to be annotated @FormUrlEncoded` | Form parameters would otherwise be silently dropped               |
+| `@Part requires the function to be annotated @Multipart`                 | Multipart parts would otherwise be silently dropped               |
+| `Function declares both @FormUrlEncoded and @Multipart`                  | Two conflicting body encodings on one function                    |
+| `@Body cannot be combined with @FormUrlEncoded or @Multipart`            | The encoded form wins, so the body would be silently dropped      |
+| `Parameter has no KtorKit annotation`                                    | The argument would never be sent                                  |
+| `Parameter declares more than one KtorKit binding annotation`            | Which one wins would be arbitrary                                 |
+| `cannot build a serializer for 'X'`                                      | A return type or `@Body` type is not `@Serializable`              |
+
+The first eleven are FIR checkers, so they appear as you type. The last is raised during
+IR generation — serializability is only knowable once types are resolved — but it is still
+a normal compiler error with a file and line, not an internal exception.
+
+Several of these exist because the alternative is a request that is silently wrong on the
+wire: a `@Field` without `@FormUrlEncoded`, a `@Body` alongside an encoded form, or a
+parameter with no annotation at all would each compile fine and quietly send nothing.
 
 ## Under the Hood
 
@@ -424,10 +455,10 @@ actual code.
 `KtorKitDeclarationGenerationExtension` registers a `LookupPredicate` for
 `@ContributesAPI` and answers three questions the compiler asks it:
 
-| Compiler asks | Plugin answers |
-|---|---|
-| `getNestedClassifiersNames` | "this interface has a nested class named `Impl`" |
-| `generateNestedClassLikeDeclaration` | a `final class Impl : PostsApi` |
+| Compiler asks                                                             | Plugin answers                                                                         |
+|---------------------------------------------------------------------------|----------------------------------------------------------------------------------------|
+| `getNestedClassifiersNames`                                               | "this interface has a nested class named `Impl`"                                       |
+| `generateNestedClassLikeDeclaration`                                      | a `final class Impl : PostsApi`                                                        |
 | `getCallableNamesForClass` → `generateConstructors` / `generateFunctions` | a constructor taking `KtorClient`, plus one `override` per abstract interface function |
 
 Each generated function copies the interface function's name, value parameters, return type,
@@ -503,27 +534,28 @@ function in hand.
 
 The return type alone decides how the response is consumed:
 
-| Return type | Emitted call |
-|---|---|
-| `String` | `executeAsString()` |
-| `Response<String>` | `executeAsResponseString()` |
-| `Response<T>` | `executeAsResponseWithDeserializer(ser)` |
-| `Flow<String>` | `executeAsFlowOfString()` |
-| `Flow<T>` | `executeAsFlow(ser)` |
-| anything else | `executeWithDeserializer(ser)` |
+| Return type        | Emitted call                             |
+|--------------------|------------------------------------------|
+| `String`           | `executeAsString()`                      |
+| `Unit`             | `executeIgnoringBody()`                  |
+| `Response<String>` | `executeAsResponseString()`              |
+| `Response<T>`      | `executeAsResponseWithDeserializer(ser)` |
+| `Flow<String>`     | `executeAsFlowOfString()`                |
+| `Flow<T>`          | `executeAsFlow(ser)`                     |
+| anything else      | `executeWithDeserializer(ser)`           |
 
 ### Resolving serializers at compile time
 
 `resolveSerializer` builds a `KSerializer` expression by recursing on the type, which is what
 lets nested generics work and what keeps the whole thing reflection-free:
 
-| Type | Emitted expression |
-|---|---|
-| `T?` | `resolve(T).nullable` |
-| `List<T>` | `ListSerializer(resolve(T))` |
-| `Map<K, V>` | `MapSerializer(resolve(K), resolve(V))` |
-| `Int`, `String`, … | `Int.serializer()` — the `kotlinx.serialization.builtins` extension |
-| any `@Serializable` | `T.Companion.serializer()` |
+| Type                | Emitted expression                                                  |
+|---------------------|---------------------------------------------------------------------|
+| `T?`                | `resolve(T).nullable`                                               |
+| `List<T>`           | `ListSerializer(resolve(T))`                                        |
+| `Map<K, V>`         | `MapSerializer(resolve(K), resolve(V))`                             |
+| `Int`, `String`, …  | `Int.serializer()` — the `kotlinx.serialization.builtins` extension |
+| any `@Serializable` | `T.Companion.serializer()`                                          |
 
 So `Response<List<Map<String, Int>>>` resolves by peeling one layer at a time down to
 primitives. Because the serializer is chosen during compilation, this works identically on
@@ -592,52 +624,6 @@ Run tests:
 ./gradlew :tests-mp:allTests  # Multiplatform tests (JVM + JS + macOS native)
 ```
 
-## Releasing
-
-Publishing goes to Maven Central through the [Central Portal][portal], driven by the
-[vanniktech maven-publish][vmp] plugin. Coordinates and POM metadata live in
-`gradle.properties`; each module contributes its own `POM_ARTIFACT_ID` / `POM_NAME` /
-`POM_DESCRIPTION`.
-
-Three artifacts are published per release:
-
-| Artifact | Contents |
-|---|---|
-| `com.adkhambek.ktor.kit:runtime` | the multiplatform runtime — one artifact per target plus the shared metadata module |
-| `com.adkhambek.ktor.kit:compiler` | the K2 compiler plugin |
-| `com.adkhambek.ktor.kit:gradle-plugin` | the Gradle plugin, plus its `com.adkhambek.ktor.kit.gradle.plugin` marker |
-
-To cut a release:
-
-1. Set `VERSION_NAME` in `gradle.properties` to the release version.
-2. Commit, then push a matching `v*` tag — `git tag v0.1.0 && git push origin v0.1.0`.
-3. The **Publish to Maven Central** workflow builds, runs the full test suite, and uploads.
-
-The workflow runs on **macOS**, not Linux: the Apple targets can only be built on a Mac
-host, and a macOS runner cross-compiles `linuxX64` and `mingwX64` too, so a single job
-publishes all 14 targets.
-
-Five repository secrets are required:
-
-| Secret | Value |
-|---|---|
-| `MAVEN_CENTRAL_USERNAME` | Central Portal user token name |
-| `MAVEN_CENTRAL_PASSWORD` | Central Portal user token password |
-| `SIGNING_KEY` | ASCII-armoured GPG private key (`gpg --armor --export-secret-keys <id>`) |
-| `SIGNING_KEY_ID` | last 8 characters of the GPG key id |
-| `SIGNING_KEY_PASSWORD` | GPG key passphrase |
-
-To dry-run the whole thing without uploading, publish to your local Maven repository and
-inspect the result:
-
-```bash
-./gradlew publishToMavenLocal
-ls ~/.m2/repository/com/adkhambek/ktor/kit/
-```
-
-[portal]: https://central.sonatype.com/
-[vmp]: https://vanniktech.github.io/gradle-maven-publish-plugin/
-
 ## Requirements
 
 - Kotlin 2.4.10 (K2) — must match exactly; see [Versions](#versions)
@@ -648,11 +634,11 @@ ls ~/.m2/repository/com/adkhambek/ktor/kit/
 
 The suite runs on every supported platform:
 
-| Suite | Count | Targets |
-|-------|-------|---------|
-| `:sample:test` | 143 | JVM — functional tests plus compiler-diagnostic tests driven through `kotlin-compile-testing` |
-| `:tests-mp:allTests` | 104 × 3 | JVM, JS (Node), macOS native — the same suite compiled and run per target |
-| `integration-tests/` | 8 | Two standalone builds that apply the **published** Gradle plugin |
+| Suite                | Count   | Targets                                                                                       |
+|----------------------|---------|-----------------------------------------------------------------------------------------------|
+| `:sample:test`       | 139     | JVM — functional tests plus compiler-diagnostic tests driven through `kotlin-compile-testing` |
+| `:tests-mp:allTests` | 104 × 3 | JVM, JS (Node), macOS native — the same suite compiled and run per target                     |
+| `integration-tests/` | 8       | Two standalone builds that apply the **published** Gradle plugin                              |
 
 That is 451 test executions in the main build, plus the integration consumers.
 
@@ -677,9 +663,9 @@ negative cases, where a well-formed API must still compile cleanly.
 
 ## Not Yet Supported
 
-- Server-sent events (`text/event-stream`) as a first-class return type — `Flow<String>` can consume the raw lines
-- Custom converters or interceptor pipelines beyond what the Ktor `HttpClient` provides
-- Per-call timeout or retry annotations — configure these on the `HttpClient` instead
+- [ ] Server-sent events (`text/event-stream`) as a first-class return type — `Flow<String>` can consume the raw lines
+- [ ] Custom converters or interceptor pipelines beyond what the Ktor `HttpClient` provides
+- [ ] Per-call timeout or retry annotations — configure these on the `HttpClient` instead
 
 ## License
 
