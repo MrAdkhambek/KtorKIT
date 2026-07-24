@@ -4,6 +4,19 @@
 rootProject.name = "kmp-consumer"
 
 pluginManagement {
+    // Track whatever VERSION_NAME the root build is on, so this always exercises the
+    // version just published locally. Hardcoding it meant that after a version bump the
+    // plugin resolved the previous release from Maven Central and silently tested that
+    // instead.
+    val ktorkitVersion: String = java.util.Properties().run {
+        File(settingsDir, "../../gradle.properties").inputStream().use { load(it) }
+        getProperty("VERSION_NAME")
+    }
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.id == "com.adkhambek.ktor.kit") useVersion(ktorkitVersion)
+        }
+    }
     repositories {
         mavenLocal()
         gradlePluginPortal()
