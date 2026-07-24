@@ -9,7 +9,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.decodeURLPart
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.core.toByteArray
-import io.ktorkit.KtorClient
+import com.adkhambek.ktor.kit.KtorClient
 
 class CapturedRequest {
     var url: String = ""

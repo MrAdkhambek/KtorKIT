@@ -26,7 +26,7 @@ Define your API as an interface, annotate methods with HTTP verbs, and let the c
 
 | Component                       | Version         |
 |---------------------------------|-----------------|
-| **KtorKIT**                     | `0.1.0-SNAPSHOT`|
+| **KtorKIT**                     | `0.1.0`         |
 | **Kotlin**                      | `2.4.10`        |
 | **Ktor**                        | `3.5.1`         |
 | **kotlinx-serialization-json**  | `1.11.0`        |
@@ -34,10 +34,12 @@ Define your API as an interface, annotate methods with HTTP verbs, and let the c
 | **Gradle**                      | `9.6.1`         |
 | **JVM Toolchain**               | `21`            |
 
+Published as `com.adkhambek.ktor.kit` on Maven Central.
+
 Dependency versions live in `gradle/libs.versions.toml`; every module resolves them from
-that catalog. The published artifact version is separate — it is defined once as
-`ktorkitVersion` in `gradle.properties`, which the root build script and the Gradle plugin's
-baked-in artifact coordinates both read from.
+that catalog. The published coordinates are separate — `GROUP` and `VERSION_NAME` in
+`gradle.properties`, which the root build script and the Gradle plugin's baked-in artifact
+coordinates both read from.
 
 Because the plugin binds to compiler internals, **the Kotlin version is not a free choice**:
 KtorKIT must be built against the same Kotlin version your project compiles with.
@@ -82,32 +84,24 @@ ktorkit/
 ### 1. Apply the Gradle plugin
 
 ```kotlin
-// settings.gradle.kts
-pluginManagement {
-    repositories {
-        mavenLocal()          // resolves the io.ktorkit plugin itself
-        gradlePluginPortal()
-        mavenCentral()
-    }
-}
-
-dependencyResolutionManagement {
-    repositories {
-        mavenLocal()          // the plugin adds io.ktorkit:runtime, resolved from here
-        mavenCentral()
-    }
-}
-```
-
-KtorKIT is not on Maven Central yet, so both blocks need `mavenLocal()`: the first resolves
-the plugin, the second resolves the `runtime` artifact the plugin adds for you.
-
-```kotlin
 // build.gradle.kts
 plugins {
     kotlin("jvm") version "2.4.10"
     kotlin("plugin.serialization") version "2.4.10"
-    id("io.ktorkit") version "0.1.0-SNAPSHOT"
+    id("com.adkhambek.ktor.kit") version "0.1.0"
+}
+```
+
+Both the plugin and the runtime resolve from Maven Central, so no extra repository
+configuration is needed beyond the defaults:
+
+```kotlin
+// settings.gradle.kts
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
 }
 ```
 
@@ -119,7 +113,7 @@ compiler plugins are bound to the compiler's internal APIs.
 ### 2. Define your API
 
 ```kotlin
-import io.ktorkit.*
+import com.adkhambek.ktor.kit.*
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -540,7 +534,7 @@ inline fun <reified T : Any> KtorClient.create(): T =
 ```
 
 That body only ever runs if the plugin is missing, and says so. Normally `CreateCallTransformer`
-finds every call to `io.ktorkit.create`, reads the reified type argument, locates the nested
+finds every call to `com.adkhambek.ktor.kit.create`, reads the reified type argument, locates the nested
 `Impl`, and replaces the entire call with a direct constructor invocation:
 
 ```kotlin
@@ -566,10 +560,10 @@ most behavior can be tested as plain library code.
 passes the build's `MessageCollector` down to the IR phase for diagnostics.
 
 The `gradle-plugin` module is a `KotlinCompilerPluginSupportPlugin`: it adds
-`io.ktorkit:runtime` to your dependencies and tells the Kotlin Gradle Plugin to put
-`io.ktorkit:compiler` on the compiler classpath. Both coordinates use a `KTORKIT_VERSION`
-constant generated at build time from the `ktorkitVersion` property, so the version is declared
-exactly once.
+`com.adkhambek.ktor.kit:runtime` to your dependencies and tells the Kotlin Gradle Plugin to put
+`com.adkhambek.ktor.kit:compiler` on the compiler classpath. Both coordinates come from
+`KTORKIT_GROUP` / `KTORKIT_VERSION` constants generated at build time from `GROUP` and
+`VERSION_NAME`, so the coordinates are declared exactly once.
 
 ## Building
 
@@ -587,6 +581,52 @@ Run tests:
 ./gradlew :sample:test        # JVM tests + compiler diagnostic tests
 ./gradlew :tests-mp:allTests  # Multiplatform tests (JVM + JS + macOS native)
 ```
+
+## Releasing
+
+Publishing goes to Maven Central through the [Central Portal][portal], driven by the
+[vanniktech maven-publish][vmp] plugin. Coordinates and POM metadata live in
+`gradle.properties`; each module contributes its own `POM_ARTIFACT_ID` / `POM_NAME` /
+`POM_DESCRIPTION`.
+
+Three artifacts are published per release:
+
+| Artifact | Contents |
+|---|---|
+| `com.adkhambek.ktor.kit:runtime` | the multiplatform runtime — one artifact per target plus the shared metadata module |
+| `com.adkhambek.ktor.kit:compiler` | the K2 compiler plugin |
+| `com.adkhambek.ktor.kit:gradle-plugin` | the Gradle plugin, plus its `com.adkhambek.ktor.kit.gradle.plugin` marker |
+
+To cut a release:
+
+1. Set `VERSION_NAME` in `gradle.properties` to the release version.
+2. Commit, then push a matching `v*` tag — `git tag v0.1.0 && git push origin v0.1.0`.
+3. The **Publish to Maven Central** workflow builds, runs the full test suite, and uploads.
+
+The workflow runs on **macOS**, not Linux: the Apple targets can only be built on a Mac
+host, and a macOS runner cross-compiles `linuxX64` and `mingwX64` too, so a single job
+publishes all 14 targets.
+
+Five repository secrets are required:
+
+| Secret | Value |
+|---|---|
+| `MAVEN_CENTRAL_USERNAME` | Central Portal user token name |
+| `MAVEN_CENTRAL_PASSWORD` | Central Portal user token password |
+| `SIGNING_KEY` | ASCII-armoured GPG private key (`gpg --armor --export-secret-keys <id>`) |
+| `SIGNING_KEY_ID` | last 8 characters of the GPG key id |
+| `SIGNING_KEY_PASSWORD` | GPG key passphrase |
+
+To dry-run the whole thing without uploading, publish to your local Maven repository and
+inspect the result:
+
+```bash
+./gradlew publishToMavenLocal
+ls ~/.m2/repository/com/adkhambek/ktor/kit/
+```
+
+[portal]: https://central.sonatype.com/
+[vmp]: https://vanniktech.github.io/gradle-maven-publish-plugin/
 
 ## Requirements
 

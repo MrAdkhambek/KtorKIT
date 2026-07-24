@@ -1,6 +1,6 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
-    `maven-publish`
+    id("publishing-convention")
 }
 
 kotlin {
@@ -9,14 +9,6 @@ kotlin {
 
 dependencies {
     compileOnly(libs.kotlin.compiler.embeddable)
-}
-
-publishing {
-    publications {
-        create<MavenPublication>("maven") {
-            from(components["java"])
-        }
-    }
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {

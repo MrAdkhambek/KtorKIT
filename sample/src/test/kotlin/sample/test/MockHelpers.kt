@@ -9,8 +9,8 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.utils.io.core.toByteArray
-import io.ktorkit.KtorClient
-import io.ktorkit.create
+import com.adkhambek.ktor.kit.KtorClient
+import com.adkhambek.ktor.kit.create
 
 class CapturedRequest {
     var url: String = ""

@@ -1,7 +1,7 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
     `java-gradle-plugin`
-    `maven-publish`
+    id("publishing-convention")
 }
 
 kotlin {
@@ -13,20 +13,23 @@ dependencies {
     compileOnly(gradleApi())
 }
 
-// Bakes the project version into a generated constant so the plugin never
-// hardcodes the coordinates of the runtime/compiler artifacts it resolves.
-val generateVersionConstant by tasks.registering {
+// Bakes the published coordinates into a generated constant so the plugin never hardcodes
+// the group/version of the runtime and compiler artifacts it resolves at apply time.
+val generateCoordinates = tasks.register("generateCoordinates") {
     val outputDir = layout.buildDirectory.dir("generated/version")
+    val groupValue = project.group.toString()
     val versionValue = project.version.toString()
+    inputs.property("group", groupValue)
     inputs.property("version", versionValue)
     outputs.dir(outputDir)
     doLast {
-        val packageDir = outputDir.get().asFile.resolve("io/ktorkit/gradle")
+        val packageDir = outputDir.get().asFile.resolve("com/adkhambek/ktor/kit/gradle")
         packageDir.mkdirs()
-        packageDir.resolve("KtorKitVersion.kt").writeText(
+        packageDir.resolve("KtorKitCoordinates.kt").writeText(
             """
-            package io.ktorkit.gradle
+            package com.adkhambek.ktor.kit.gradle
 
+            internal const val KTORKIT_GROUP: String = "$groupValue"
             internal const val KTORKIT_VERSION: String = "$versionValue"
             """.trimIndent() + "\n"
         )
@@ -34,14 +37,17 @@ val generateVersionConstant by tasks.registering {
 }
 
 kotlin.sourceSets.named("main") {
-    kotlin.srcDir(generateVersionConstant)
+    kotlin.srcDir(generateCoordinates)
 }
 
 gradlePlugin {
     plugins {
         create("ktorkit") {
-            id = "io.ktorkit"
-            implementationClass = "io.ktorkit.gradle.KtorKitGradlePlugin"
+            // Must live under the com.adkhambek namespace: Gradle derives the plugin
+            // marker's Maven coordinates from this id, and Central only accepts
+            // namespaces we have verified.
+            id = "com.adkhambek.ktor.kit"
+            implementationClass = "com.adkhambek.ktor.kit.gradle.KtorKitGradlePlugin"
             displayName = "KtorKit Compiler Plugin"
             description = "Wires the KtorKit K2 compiler plugin into kotlinc."
         }

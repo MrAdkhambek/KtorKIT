@@ -1,1 +1,1 @@
-io.ktorkit.compiler.KtorKitCompilerPluginRegistrar
+com.adkhambek.ktor.kit.compiler.KtorKitCompilerPluginRegistrar

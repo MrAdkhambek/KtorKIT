@@ -1,7 +1,7 @@
 package sample.test
 
 import io.ktor.http.HttpStatusCode
-import io.ktorkit.create
+import com.adkhambek.ktor.kit.create
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals

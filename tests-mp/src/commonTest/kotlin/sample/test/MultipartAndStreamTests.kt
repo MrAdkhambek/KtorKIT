@@ -1,6 +1,6 @@
 package sample.test
 
-import io.ktorkit.create
+import com.adkhambek.ktor.kit.create
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test

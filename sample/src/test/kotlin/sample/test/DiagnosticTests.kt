@@ -3,7 +3,7 @@ package sample.test
 import com.tschuchort.compiletesting.JvmCompilationResult
 import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.SourceFile
-import io.ktorkit.compiler.KtorKitCompilerPluginRegistrar
+import com.adkhambek.ktor.kit.compiler.KtorKitCompilerPluginRegistrar
 import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
@@ -45,7 +45,7 @@ class ContributesApiOnInterfaceCheckerTests {
     @Test fun `@ContributesAPI on a class produces error`() {
         val result = compile(
             """
-            import io.ktorkit.ContributesAPI
+            import com.adkhambek.ktor.kit.ContributesAPI
             @ContributesAPI
             class BadOnClass
             """.trimIndent()
@@ -56,7 +56,7 @@ class ContributesApiOnInterfaceCheckerTests {
     @Test fun `@ContributesAPI on an object produces error`() {
         val result = compile(
             """
-            import io.ktorkit.ContributesAPI
+            import com.adkhambek.ktor.kit.ContributesAPI
             @ContributesAPI
             object BadObject
             """.trimIndent()
@@ -67,7 +67,7 @@ class ContributesApiOnInterfaceCheckerTests {
     @Test fun `@ContributesAPI on an abstract class produces error`() {
         val result = compile(
             """
-            import io.ktorkit.ContributesAPI
+            import com.adkhambek.ktor.kit.ContributesAPI
             @ContributesAPI
             abstract class BadAbstract
             """.trimIndent()
@@ -80,7 +80,7 @@ class HttpVerbCheckerTests {
     @Test fun `function with no HTTP verb produces error`() {
         val result = compile(
             """
-            import io.ktorkit.ContributesAPI
+            import com.adkhambek.ktor.kit.ContributesAPI
             @ContributesAPI
             interface Api {
                 suspend fun missingVerb(): String
@@ -93,9 +93,9 @@ class HttpVerbCheckerTests {
     @Test fun `function with two HTTP verbs produces error`() {
         val result = compile(
             """
-            import io.ktorkit.ContributesAPI
-            import io.ktorkit.GET
-            import io.ktorkit.POST
+            import com.adkhambek.ktor.kit.ContributesAPI
+            import com.adkhambek.ktor.kit.GET
+            import com.adkhambek.ktor.kit.POST
             @ContributesAPI
             interface Api {
                 @GET("a")
@@ -124,9 +124,9 @@ class PathPlaceholderCheckerTests {
     @Test fun `extra @Path with no template placeholder produces error`() {
         val result = compile(
             """
-            import io.ktorkit.ContributesAPI
-            import io.ktorkit.GET
-            import io.ktorkit.Path
+            import com.adkhambek.ktor.kit.ContributesAPI
+            import com.adkhambek.ktor.kit.GET
+            import com.adkhambek.ktor.kit.Path
             @ContributesAPI
             interface Api {
                 @GET("posts/{id}")
@@ -140,9 +140,9 @@ class PathPlaceholderCheckerTests {
     @Test fun `template placeholder with no @Path param produces error`() {
         val result = compile(
             """
-            import io.ktorkit.ContributesAPI
-            import io.ktorkit.GET
-            import io.ktorkit.Path
+            import com.adkhambek.ktor.kit.ContributesAPI
+            import com.adkhambek.ktor.kit.GET
+            import com.adkhambek.ktor.kit.Path
             @ContributesAPI
             interface Api {
                 @GET("posts/{id}/comments/{commentId}")
@@ -156,9 +156,9 @@ class PathPlaceholderCheckerTests {
     @Test fun `path with template and matching @Path is OK`() {
         val result = compile(
             """
-            import io.ktorkit.ContributesAPI
-            import io.ktorkit.GET
-            import io.ktorkit.Path
+            import com.adkhambek.ktor.kit.ContributesAPI
+            import com.adkhambek.ktor.kit.GET
+            import com.adkhambek.ktor.kit.Path
             @ContributesAPI
             interface Api {
                 @GET("posts/{id}")
@@ -172,9 +172,9 @@ class PathPlaceholderCheckerTests {
     @Test fun `multiple placeholders all matched is OK`() {
         val result = compile(
             """
-            import io.ktorkit.ContributesAPI
-            import io.ktorkit.GET
-            import io.ktorkit.Path
+            import com.adkhambek.ktor.kit.ContributesAPI
+            import com.adkhambek.ktor.kit.GET
+            import com.adkhambek.ktor.kit.Path
             @ContributesAPI
             interface Api {
                 @GET("users/{userId}/posts/{postId}")
@@ -190,9 +190,9 @@ class FormEncodingCheckerTests {
     @Test fun `@Field without @FormUrlEncoded produces error`() {
         val result = compile(
             """
-            import io.ktorkit.ContributesAPI
-            import io.ktorkit.Field
-            import io.ktorkit.POST
+            import com.adkhambek.ktor.kit.ContributesAPI
+            import com.adkhambek.ktor.kit.Field
+            import com.adkhambek.ktor.kit.POST
             @ContributesAPI
             interface Api {
                 @POST("res")
@@ -206,9 +206,9 @@ class FormEncodingCheckerTests {
     @Test fun `@FieldMap without @FormUrlEncoded produces error`() {
         val result = compile(
             """
-            import io.ktorkit.ContributesAPI
-            import io.ktorkit.FieldMap
-            import io.ktorkit.POST
+            import com.adkhambek.ktor.kit.ContributesAPI
+            import com.adkhambek.ktor.kit.FieldMap
+            import com.adkhambek.ktor.kit.POST
             @ContributesAPI
             interface Api {
                 @POST("res")
@@ -222,11 +222,11 @@ class FormEncodingCheckerTests {
     @Test fun `@Field with @FormUrlEncoded is OK`() {
         val result = compile(
             """
-            import io.ktorkit.ContributesAPI
-            import io.ktorkit.Field
-            import io.ktorkit.FieldMap
-            import io.ktorkit.FormUrlEncoded
-            import io.ktorkit.POST
+            import com.adkhambek.ktor.kit.ContributesAPI
+            import com.adkhambek.ktor.kit.Field
+            import com.adkhambek.ktor.kit.FieldMap
+            import com.adkhambek.ktor.kit.FormUrlEncoded
+            import com.adkhambek.ktor.kit.POST
             @ContributesAPI
             interface Api {
                 @FormUrlEncoded
@@ -241,9 +241,9 @@ class FormEncodingCheckerTests {
     @Test fun `@Body without @FormUrlEncoded is unaffected`() {
         val result = compile(
             """
-            import io.ktorkit.Body
-            import io.ktorkit.ContributesAPI
-            import io.ktorkit.POST
+            import com.adkhambek.ktor.kit.Body
+            import com.adkhambek.ktor.kit.ContributesAPI
+            import com.adkhambek.ktor.kit.POST
             @ContributesAPI
             interface Api {
                 @POST("res")
@@ -259,9 +259,9 @@ class MultipartCheckerTests {
     @Test fun `@Part without @Multipart produces error`() {
         val result = compile(
             """
-            import io.ktorkit.ContributesAPI
-            import io.ktorkit.POST
-            import io.ktorkit.Part
+            import com.adkhambek.ktor.kit.ContributesAPI
+            import com.adkhambek.ktor.kit.POST
+            import com.adkhambek.ktor.kit.Part
             @ContributesAPI
             interface Api {
                 @POST("upload")
@@ -275,10 +275,10 @@ class MultipartCheckerTests {
     @Test fun `@Part with @Multipart is OK`() {
         val result = compile(
             """
-            import io.ktorkit.ContributesAPI
-            import io.ktorkit.Multipart
-            import io.ktorkit.POST
-            import io.ktorkit.Part
+            import com.adkhambek.ktor.kit.ContributesAPI
+            import com.adkhambek.ktor.kit.Multipart
+            import com.adkhambek.ktor.kit.POST
+            import com.adkhambek.ktor.kit.Part
             @ContributesAPI
             interface Api {
                 @Multipart
@@ -296,10 +296,10 @@ class MultipartCheckerTests {
     @Test fun `@FormUrlEncoded plus @Multipart produces error`() {
         val result = compile(
             """
-            import io.ktorkit.ContributesAPI
-            import io.ktorkit.FormUrlEncoded
-            import io.ktorkit.Multipart
-            import io.ktorkit.POST
+            import com.adkhambek.ktor.kit.ContributesAPI
+            import com.adkhambek.ktor.kit.FormUrlEncoded
+            import com.adkhambek.ktor.kit.Multipart
+            import com.adkhambek.ktor.kit.POST
             @ContributesAPI
             interface Api {
                 @FormUrlEncoded
@@ -315,10 +315,10 @@ class MultipartCheckerTests {
     @Test fun `@Field inside a @Multipart function produces error`() {
         val result = compile(
             """
-            import io.ktorkit.ContributesAPI
-            import io.ktorkit.Field
-            import io.ktorkit.Multipart
-            import io.ktorkit.POST
+            import com.adkhambek.ktor.kit.ContributesAPI
+            import com.adkhambek.ktor.kit.Field
+            import com.adkhambek.ktor.kit.Multipart
+            import com.adkhambek.ktor.kit.POST
             @ContributesAPI
             interface Api {
                 @Multipart
@@ -335,11 +335,11 @@ class BodyEncodingConflictTests {
     @Test fun `@Body on a @Multipart function produces error`() {
         val result = compile(
             """
-            import io.ktorkit.Body
-            import io.ktorkit.ContributesAPI
-            import io.ktorkit.Multipart
-            import io.ktorkit.POST
-            import io.ktorkit.Part
+            import com.adkhambek.ktor.kit.Body
+            import com.adkhambek.ktor.kit.ContributesAPI
+            import com.adkhambek.ktor.kit.Multipart
+            import com.adkhambek.ktor.kit.POST
+            import com.adkhambek.ktor.kit.Part
             @ContributesAPI
             interface Api {
                 @Multipart
@@ -357,11 +357,11 @@ class BodyEncodingConflictTests {
     @Test fun `@Body on a @FormUrlEncoded function produces error`() {
         val result = compile(
             """
-            import io.ktorkit.Body
-            import io.ktorkit.ContributesAPI
-            import io.ktorkit.Field
-            import io.ktorkit.FormUrlEncoded
-            import io.ktorkit.POST
+            import com.adkhambek.ktor.kit.Body
+            import com.adkhambek.ktor.kit.ContributesAPI
+            import com.adkhambek.ktor.kit.Field
+            import com.adkhambek.ktor.kit.FormUrlEncoded
+            import com.adkhambek.ktor.kit.POST
             @ContributesAPI
             interface Api {
                 @FormUrlEncoded
@@ -376,9 +376,9 @@ class BodyEncodingConflictTests {
     @Test fun `@Body alone remains valid`() {
         val result = compile(
             """
-            import io.ktorkit.Body
-            import io.ktorkit.ContributesAPI
-            import io.ktorkit.POST
+            import com.adkhambek.ktor.kit.Body
+            import com.adkhambek.ktor.kit.ContributesAPI
+            import com.adkhambek.ktor.kit.POST
             @ContributesAPI
             interface Api {
                 @POST("res")
@@ -396,8 +396,8 @@ class StreamingCompilationTests {
     @Test fun `Flow of String return type compiles`() {
         val result = compile(
             """
-            import io.ktorkit.ContributesAPI
-            import io.ktorkit.GET
+            import com.adkhambek.ktor.kit.ContributesAPI
+            import com.adkhambek.ktor.kit.GET
             import kotlinx.coroutines.flow.Flow
             @ContributesAPI
             interface Api {
@@ -411,8 +411,8 @@ class StreamingCompilationTests {
     @Test fun `non-suspend Flow function is accepted by the verb checker`() {
         val result = compile(
             """
-            import io.ktorkit.ContributesAPI
-            import io.ktorkit.POST
+            import com.adkhambek.ktor.kit.ContributesAPI
+            import com.adkhambek.ktor.kit.POST
             import kotlinx.coroutines.flow.Flow
             @ContributesAPI
             interface Api {
@@ -428,8 +428,8 @@ class NonSerializableTypeTests {
     @Test fun `non-Serializable return type reports a readable error`() {
         val result = compile(
             """
-            import io.ktorkit.ContributesAPI
-            import io.ktorkit.GET
+            import com.adkhambek.ktor.kit.ContributesAPI
+            import com.adkhambek.ktor.kit.GET
 
             data class NotSerializable(val id: Int)
 
@@ -445,8 +445,8 @@ class NonSerializableTypeTests {
     @Test fun `non-Serializable type does not surface an internal exception`() {
         val result = compile(
             """
-            import io.ktorkit.ContributesAPI
-            import io.ktorkit.GET
+            import com.adkhambek.ktor.kit.ContributesAPI
+            import com.adkhambek.ktor.kit.GET
 
             data class NotSerializable(val id: Int)
 
@@ -465,9 +465,9 @@ class NonSerializableTypeTests {
     @Test fun `non-Serializable @Body reports a readable error`() {
         val result = compile(
             """
-            import io.ktorkit.Body
-            import io.ktorkit.ContributesAPI
-            import io.ktorkit.POST
+            import com.adkhambek.ktor.kit.Body
+            import com.adkhambek.ktor.kit.ContributesAPI
+            import com.adkhambek.ktor.kit.POST
 
             data class NotSerializable(val id: Int)
 
@@ -485,10 +485,10 @@ class ControlGroupTests {
     @Test fun `well-formed @ContributesAPI compiles cleanly`() {
         val result = compile(
             """
-            import io.ktorkit.ContributesAPI
-            import io.ktorkit.GET
-            import io.ktorkit.Path
-            import io.ktorkit.Query
+            import com.adkhambek.ktor.kit.ContributesAPI
+            import com.adkhambek.ktor.kit.GET
+            import com.adkhambek.ktor.kit.Path
+            import com.adkhambek.ktor.kit.Query
             @ContributesAPI
             interface GoodApi {
                 @GET("posts/{id}")
@@ -502,8 +502,8 @@ class ControlGroupTests {
     @Test fun `interface with declared baseUrl compiles`() {
         val result = compile(
             """
-            import io.ktorkit.ContributesAPI
-            import io.ktorkit.GET
+            import com.adkhambek.ktor.kit.ContributesAPI
+            import com.adkhambek.ktor.kit.GET
             @ContributesAPI(baseUrl = "https://api.example/")
             interface GoodApi {
                 @GET("posts")

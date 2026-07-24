@@ -1,6 +1,6 @@
 package sample.test
 
-import io.ktorkit.create
+import com.adkhambek.ktor.kit.create
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
