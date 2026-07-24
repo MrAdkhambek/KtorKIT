@@ -148,3 +148,18 @@ class CombinedTests {
         assertEquals("kotlin", cap.query("q"))
     }
 }
+
+class UnitReturnFunctionalTests {
+    @Test fun unit_return_issues_request() = runTest {
+        val (c, cap) = mockSetup()
+        c.create<UnitApi>().delete(42)
+        assertEquals("DELETE", cap.method)
+        assertTrue(cap.url.endsWith("/posts/42"), cap.url)
+    }
+
+    @Test fun unit_return_ignores_body() = runTest {
+        val (c, cap) = mockSetup(responseBody = "whatever this is not json")
+        c.create<UnitApi>().ping()
+        assertEquals("POST", cap.method)
+    }
+}

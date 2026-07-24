@@ -110,3 +110,18 @@ class ReturnTypeTests {
         assertEquals(500, r.status.value)
     }
 }
+
+class UnitReturnFunctionalTests {
+    @Test fun `Unit return still issues the request`() = runTest {
+        val (c, cap) = mockSetup()
+        c.create<UnitApi>().delete(42)
+        assertEquals("DELETE", cap.method)
+        assertTrue(cap.url.endsWith("/posts/42"), cap.url)
+    }
+
+    @Test fun `Unit return ignores the response body`() = runTest {
+        val (c, cap) = mockSetup(responseBody = "whatever this is not json")
+        c.create<UnitApi>().ping()
+        assertEquals("POST", cap.method)
+    }
+}

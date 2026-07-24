@@ -514,3 +514,105 @@ class ControlGroupTests {
         result.assertCompiled()
     }
 }
+
+class ParameterBindingCheckerTests {
+    @Test fun `unannotated parameter produces error`() {
+        val result = compile(
+            """
+            import com.adkhambek.ktor.kit.ContributesAPI
+            import com.adkhambek.ktor.kit.GET
+            @ContributesAPI
+            interface Api {
+                @GET("search")
+                suspend fun search(q: String): String
+            }
+            """.trimIndent()
+        )
+        result.assertFailedWith("Parameter has no KtorKit annotation")
+    }
+
+    @Test fun `two binding annotations on one parameter produces error`() {
+        val result = compile(
+            """
+            import com.adkhambek.ktor.kit.ContributesAPI
+            import com.adkhambek.ktor.kit.GET
+            import com.adkhambek.ktor.kit.Header
+            import com.adkhambek.ktor.kit.Query
+            @ContributesAPI
+            interface Api {
+                @GET("search")
+                suspend fun search(@Query("q") @Header("X-Q") q: String): String
+            }
+            """.trimIndent()
+        )
+        result.assertFailedWith("more than one KtorKit binding annotation")
+    }
+
+    @Test fun `every parameter annotated is OK`() {
+        val result = compile(
+            """
+            import com.adkhambek.ktor.kit.ContributesAPI
+            import com.adkhambek.ktor.kit.GET
+            import com.adkhambek.ktor.kit.Path
+            import com.adkhambek.ktor.kit.Query
+            @ContributesAPI
+            interface Api {
+                @GET("posts/{id}")
+                suspend fun get(@Path("id") id: Int, @Query("q") q: String?): String
+            }
+            """.trimIndent()
+        )
+        result.assertCompiled()
+    }
+
+    @Test fun `zero-parameter function is OK`() {
+        val result = compile(
+            """
+            import com.adkhambek.ktor.kit.ContributesAPI
+            import com.adkhambek.ktor.kit.GET
+            @ContributesAPI
+            interface Api {
+                @GET("posts") suspend fun list(): String
+            }
+            """.trimIndent()
+        )
+        result.assertCompiled()
+    }
+}
+
+class UnitReturnTests {
+    @Test fun `Unit return compiles without a serializer`() {
+        val result = compile(
+            """
+            import com.adkhambek.ktor.kit.ContributesAPI
+            import com.adkhambek.ktor.kit.DELETE
+            import com.adkhambek.ktor.kit.Path
+            @ContributesAPI
+            interface Api {
+                @DELETE("posts/{id}")
+                suspend fun delete(@Path("id") id: Int)
+            }
+            """.trimIndent()
+        )
+        result.assertCompiled()
+    }
+}
+
+class DiagnosticLocationTests {
+    @Test fun `serializer error reports the source file`() {
+        val result = compile(
+            """
+            import com.adkhambek.ktor.kit.ContributesAPI
+            import com.adkhambek.ktor.kit.GET
+
+            data class NotSerializable(val id: Int)
+
+            @ContributesAPI
+            interface Api {
+                @GET("x") suspend fun get(): NotSerializable
+            }
+            """.trimIndent()
+        )
+        result.assertFailedWith("cannot build a serializer for", "Bad.kt")
+    }
+}

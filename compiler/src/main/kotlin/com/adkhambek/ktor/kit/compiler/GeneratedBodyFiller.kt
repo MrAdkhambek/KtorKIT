@@ -2,7 +2,9 @@ package com.adkhambek.ktor.kit.compiler
 
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocation
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.IrStatement
@@ -45,6 +47,7 @@ import org.jetbrains.kotlin.ir.types.makeNotNull
 import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.util.allOverridden
 import org.jetbrains.kotlin.ir.util.companionObject
+import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.getAnnotation
 import org.jetbrains.kotlin.ir.util.primaryConstructor
@@ -87,8 +90,28 @@ class GeneratedBodyFiller(
      * internal exception with a stack trace.
      */
     private fun IrBuilderWithScope.failWith(message: String): IrExpression {
-        messageCollector.report(CompilerMessageSeverity.ERROR, message)
+        messageCollector.report(CompilerMessageSeverity.ERROR, message, currentSourceLocation)
         return irCall(errorFn).apply { arguments[0] = irString(message) }
+    }
+
+    /**
+     * Location of the interface function currently being generated. Without it the error
+     * prints with no file or line, which is unhelpful in an interface with many methods.
+     * Points at the interface declaration rather than the synthetic override, since that
+     * is what the user actually wrote.
+     */
+    private var currentSourceLocation: CompilerMessageSourceLocation? = null
+
+    private fun sourceLocationOf(fn: IrSimpleFunction): CompilerMessageSourceLocation? {
+        val declaration = fn.overriddenSymbols.firstOrNull()?.owner ?: fn
+        val file = declaration.fileOrNull ?: return null
+        val info = file.fileEntry.getSourceRangeInfo(declaration.startOffset, declaration.endOffset)
+        return CompilerMessageLocation.create(
+            path = file.fileEntry.name,
+            line = info.startLineNumber + 1,
+            column = info.startColumnNumber + 1,
+            lineContent = null,
+        )
     }
 
     private val ktorClientClassSymbol by lazy {
@@ -123,6 +146,7 @@ class GeneratedBodyFiller(
     private val rbUseBaseUrlFn by lazy { rbFn("useBaseUrl") }
     private val rbUseUrlFn by lazy { rbFn("useUrl") }
     private val rbExecuteFn by lazy { rbFn("executeAsString") }
+    private val rbExecuteIgnoringBodyFn by lazy { rbFn("executeIgnoringBody") }
     private val rbExecuteWithDeserializerFn by lazy { rbFn("executeWithDeserializer") }
     private val rbExecuteAsResponseStringFn by lazy { rbFn("executeAsResponseString") }
     private val rbExecuteAsResponseWithDeserializerFn by lazy { rbFn("executeAsResponseWithDeserializer") }
@@ -210,6 +234,7 @@ class GeneratedBodyFiller(
     }
 
     private fun fillMethodBody(fn: IrSimpleFunction, clientField: IrField) {
+        currentSourceLocation = sourceLocationOf(fn)
         val httpInfo = httpMethodOf(fn)
         if (httpInfo == null) {
             stubMethodBody(fn)
@@ -351,6 +376,11 @@ class GeneratedBodyFiller(
 
         if (returnFqn == KtorKitNames.STRING_FQ_NAME) {
             return irCall(rbExecuteFn).apply { arguments[0] = irGet(rb) }
+        }
+
+        // Unit has no serializer; run the request and drop the body.
+        if (returnFqn == KtorKitNames.UNIT_FQ_NAME) {
+            return irCall(rbExecuteIgnoringBodyFn).apply { arguments[0] = irGet(rb) }
         }
 
         val serializerCall = resolveSerializer(returnType)

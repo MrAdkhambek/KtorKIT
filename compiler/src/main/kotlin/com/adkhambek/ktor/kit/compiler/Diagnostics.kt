@@ -49,6 +49,14 @@ object KtorKitErrors : KtDiagnosticsContainer() {
         SourceElementPositioningStrategies.NAME_IDENTIFIER,
     )
 
+    val MISSING_PARAM_BINDING: KtDiagnosticFactory0 by error0<KtElement>(
+        SourceElementPositioningStrategies.NAME_IDENTIFIER,
+    )
+
+    val CONFLICTING_PARAM_BINDING: KtDiagnosticFactory0 by error0<KtElement>(
+        SourceElementPositioningStrategies.NAME_IDENTIFIER,
+    )
+
     override fun getRendererFactory(): BaseDiagnosticRendererFactory = KtorKitDefaultErrorMessages
 }
 
@@ -94,6 +102,16 @@ object KtorKitDefaultErrorMessages : BaseDiagnosticRendererFactory() {
             KtorKitErrors.BODY_WITH_ENCODED_FORM,
             "@Body cannot be combined with @FormUrlEncoded or @Multipart; " +
                 "the encoded form takes precedence and the body would be silently dropped."
+        )
+        map.put(
+            KtorKitErrors.MISSING_PARAM_BINDING,
+            "Parameter has no KtorKit annotation, so its value would never be sent. " +
+                "Annotate it with one of @Path / @Query / @QueryMap / @Header / @HeaderMap / " +
+                "@Body / @Field / @FieldMap / @Part / @Url."
+        )
+        map.put(
+            KtorKitErrors.CONFLICTING_PARAM_BINDING,
+            "Parameter declares more than one KtorKit binding annotation; pick one."
         )
     }
 }

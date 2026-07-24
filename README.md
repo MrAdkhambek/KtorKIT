@@ -288,8 +288,16 @@ Functions can return any of the following:
 | `Response<T>`      | Wraps a deserialized body with HTTP status and headers           |
 | `Flow<String>`     | Streams the body as raw lines                                    |
 | `Flow<T>`          | Streams the body, decoding one JSON value per line               |
+| `Unit`             | Performs the request and discards the body                       |
 
 Generic types nest, so `List<Map<String, Int>>` and `Response<List<Post>>` both work.
+
+`Unit` is for endpoints whose response carries nothing worth decoding:
+
+```kotlin
+@DELETE("posts/{id}")
+suspend fun delete(@Path("id") id: Int)
+```
 
 Functions returning `Flow<T>` are declared without `suspend`; every other return type
 requires `suspend`.
@@ -386,6 +394,8 @@ The compiler plugin validates your API definitions and reports errors at compile
 | `@Part requires the function to be annotated @Multipart` | Multipart parts would otherwise be silently dropped |
 | `Function declares both @FormUrlEncoded and @Multipart` | Two conflicting body encodings on one function |
 | `@Body cannot be combined with @FormUrlEncoded or @Multipart` | The encoded form wins, so the body would be silently dropped |
+| `Parameter has no KtorKit annotation` | The argument would never be sent |
+| `Parameter declares more than one KtorKit binding annotation` | Which one wins would be arbitrary |
 | `cannot build a serializer for 'X'` | A return type or `@Body` type is not `@Serializable` |
 
 ## Under the Hood
@@ -640,10 +650,22 @@ The suite runs on every supported platform:
 
 | Suite | Count | Targets |
 |-------|-------|---------|
-| `:sample:test` | 131 | JVM — functional tests plus compiler-diagnostic tests driven through `kotlin-compile-testing` |
-| `:tests-mp:allTests` | 102 × 3 | JVM, JS (Node), macOS native — the same suite compiled and run per target |
+| `:sample:test` | 143 | JVM — functional tests plus compiler-diagnostic tests driven through `kotlin-compile-testing` |
+| `:tests-mp:allTests` | 104 × 3 | JVM, JS (Node), macOS native — the same suite compiled and run per target |
+| `integration-tests/` | 8 | Two standalone builds that apply the **published** Gradle plugin |
 
-That is 437 test executions in total, all green.
+That is 451 test executions in the main build, plus the integration consumers.
+
+The integration builds matter more than their size suggests. Everything else wires the
+compiler with `-Xplugin=` directly, so nothing else exercises the Gradle plugin — the one
+path every real consumer takes. They are separate Gradle builds that resolve KtorKIT from
+a repository, one `kotlin("jvm")` and one `kotlin("multiplatform")`:
+
+```bash
+./gradlew publishToMavenLocal
+(cd integration-tests/jvm-consumer && ../../gradlew build)
+(cd integration-tests/kmp-consumer && ../../gradlew build)
+```
 
 The diagnostic tests are worth a note: they run the *real* compiler in-process via
 `kotlin-compile-testing`, feeding it a source snippet and asserting on the exit code and the

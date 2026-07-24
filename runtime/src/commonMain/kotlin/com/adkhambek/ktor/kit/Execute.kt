@@ -86,6 +86,14 @@ class RequestBuilder internal constructor(
 
     suspend fun executeAsString(): String = doRequest().bodyAsText()
 
+    /**
+     * Performs the request and discards the body. Backs functions declared to return
+     * `Unit`, e.g. a DELETE whose 204 response carries nothing worth decoding.
+     */
+    suspend fun executeIgnoringBody() {
+        doRequest()
+    }
+
     suspend fun executeAsResponseString(): Response<String> {
         val raw = doRequest()
         return Response(raw.status, raw.headers, raw.bodyAsText())

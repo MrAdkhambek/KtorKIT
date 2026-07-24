@@ -22,7 +22,7 @@ import org.jetbrains.kotlin.name.ClassId
 object KtorKitDeclarationCheckers : DeclarationCheckers() {
     override val regularClassCheckers: Set<FirRegularClassChecker> = setOf(ContributesApiOnInterfaceChecker)
     override val simpleFunctionCheckers: Set<FirSimpleFunctionChecker> =
-        setOf(HttpVerbChecker, PathPlaceholderChecker, FormEncodingChecker)
+        setOf(HttpVerbChecker, PathPlaceholderChecker, FormEncodingChecker, ParameterBindingChecker)
 }
 
 private val CONTRIBUTES_API_ID = KtorKitNames.CONTRIBUTES_API_ID
@@ -133,6 +133,25 @@ object FormEncodingChecker : FirSimpleFunctionChecker(MppCheckerKind.Common) {
             // so a @Body alongside one would never reach the wire.
             if ((isForm || isMultipart) && param.hasAnnotation(BODY_ID)) {
                 reporter.reportOn(param.source, KtorKitErrors.BODY_WITH_ENCODED_FORM)
+            }
+        }
+    }
+}
+
+/**
+ * Every parameter must bind to exactly one part of the request. Without this, a parameter
+ * carrying no annotation is silently never sent, and one carrying two is resolved by an
+ * arbitrary internal precedence.
+ */
+object ParameterBindingChecker : FirSimpleFunctionChecker(MppCheckerKind.Common) {
+    context(context: CheckerContext, reporter: DiagnosticReporter)
+    override fun check(declaration: FirNamedFunction) {
+        if (!parentIsContributesApi(context)) return
+        for (param in declaration.valueParameters) {
+            when (KtorKitNames.PARAM_BINDING_IDS.count { param.hasAnnotation(it) }) {
+                1 -> Unit
+                0 -> reporter.reportOn(param.source, KtorKitErrors.MISSING_PARAM_BINDING)
+                else -> reporter.reportOn(param.source, KtorKitErrors.CONFLICTING_PARAM_BINDING)
             }
         }
     }

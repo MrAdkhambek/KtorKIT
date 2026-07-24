@@ -29,6 +29,20 @@ jobs:
       - name: Build and test (JVM, JS, native)
         run: ./gradlew build
 
+      # The suites above wire the compiler plugin with -Xplugin= directly, so they never
+      # exercise the Gradle plugin — the one path every real consumer takes. These builds
+      # apply the published plugin for real, on both project shapes.
+      - name: Publish to Maven local for the integration consumers
+        run: ./gradlew publishToMavenLocal
+
+      - name: Integration test — JVM consumer
+        working-directory: integration-tests/jvm-consumer
+        run: ../../gradlew build
+
+      - name: Integration test — Kotlin Multiplatform consumer
+        working-directory: integration-tests/kmp-consumer
+        run: ../../gradlew build
+
       - name: Upload test reports
         if: failure()
         uses: actions/upload-artifact@v4

@@ -17,3 +17,8 @@ out/
 
 # Local configuration
 local.properties
+
+# Integration consumers are standalone builds
+integration-tests/*/build/
+integration-tests/*/.gradle/
+integration-tests/*/.kotlin/

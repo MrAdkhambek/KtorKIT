@@ -55,6 +55,16 @@ internal object KtorKitNames {
     val MULTIPART_ID = classId("Multipart")
     val BODY_ID = classId("Body")
 
+    /**
+     * Every annotation that binds a parameter to some part of the request. A parameter
+     * must carry exactly one: none means the argument is silently never sent, and more
+     * than one means the winner depends on an arbitrary internal ordering.
+     */
+    val PARAM_BINDING_IDS: List<ClassId> = listOf(
+        "Path", "Query", "QueryMap", "Header", "HeaderMap",
+        "Body", "Field", "FieldMap", "Part", "Url",
+    ).map { classId(it) }
+
     // Runtime types the generated code targets
     val KTOR_CLIENT_ID = classId("KtorClient")
     val REQUEST_BUILDER_ID = classId("RequestBuilder")
@@ -64,6 +74,7 @@ internal object KtorKitNames {
 
     // Types the return-type dispatch keys off
     val STRING_FQ_NAME = FqName("kotlin.String")
+    val UNIT_FQ_NAME = FqName("kotlin.Unit")
     val FLOW_FQ_NAME = FqName("kotlinx.coroutines.flow.Flow")
     val LIST_FQ_NAME = FqName("kotlin.collections.List")
     val MAP_FQ_NAME = FqName("kotlin.collections.Map")

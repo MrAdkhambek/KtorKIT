@@ -131,6 +131,12 @@ interface StreamApi {
 }
 
 @ContributesAPI
+interface UnitApi {
+    @DELETE("posts/{id}") suspend fun delete(@Path("id") id: Int)
+    @POST("ping") suspend fun ping()
+}
+
+@ContributesAPI
 interface ReturnApi {
     @GET("text") suspend fun string(): String
     @GET("post") suspend fun typed(): Post
