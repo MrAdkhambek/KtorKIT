@@ -621,4 +621,4 @@ negative cases, where a well-formed API must still compile cleanly.
 
 ## License
 
-TBD
+[MIT](LICENSE) © Adkhambek
