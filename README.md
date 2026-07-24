@@ -6,6 +6,10 @@
 
 A Kotlin Compiler Plugin that turns annotated interfaces into type-safe [Ktor](https://ktor.io/) HTTP clients — inspired by Retrofit, powered by K2 FIR and IR.
 
+<p align="center">
+  <img src="media/logo.png" alt="KtorKIT" width="60%" />
+</p>
+
 Define your API as an interface, annotate methods with HTTP verbs, and let the compiler generate the implementation at compile time. No reflection, no code generation task, no annotation processor — just a compiler plugin.
 
 ```kotlin
