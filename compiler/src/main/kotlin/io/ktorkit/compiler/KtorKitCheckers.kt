@@ -18,8 +18,6 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.name.FqName
-import org.jetbrains.kotlin.name.Name
 
 object KtorKitDeclarationCheckers : DeclarationCheckers() {
     override val regularClassCheckers: Set<FirRegularClassChecker> = setOf(ContributesApiOnInterfaceChecker)
@@ -27,17 +25,15 @@ object KtorKitDeclarationCheckers : DeclarationCheckers() {
         setOf(HttpVerbChecker, PathPlaceholderChecker, FormEncodingChecker)
 }
 
-private val KTORFIT2_PKG = FqName("io.ktorkit")
-private val CONTRIBUTES_API_ID = ClassId(KTORFIT2_PKG, Name.identifier("ContributesAPI"))
-private val HTTP_VERB_IDS = listOf("GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS")
-    .map { ClassId(KTORFIT2_PKG, Name.identifier(it)) }
-private val PATH_ID = ClassId(KTORFIT2_PKG, Name.identifier("Path"))
-private val FIELD_ID = ClassId(KTORFIT2_PKG, Name.identifier("Field"))
-private val FIELD_MAP_ID = ClassId(KTORFIT2_PKG, Name.identifier("FieldMap"))
-private val FORM_URL_ENCODED_ID = ClassId(KTORFIT2_PKG, Name.identifier("FormUrlEncoded"))
-private val PART_ID = ClassId(KTORFIT2_PKG, Name.identifier("Part"))
-private val MULTIPART_ID = ClassId(KTORFIT2_PKG, Name.identifier("Multipart"))
-private val BODY_ID = ClassId(KTORFIT2_PKG, Name.identifier("Body"))
+private val CONTRIBUTES_API_ID = KtorKitNames.CONTRIBUTES_API_ID
+private val HTTP_VERB_IDS = KtorKitNames.HTTP_VERB_IDS
+private val PATH_ID = KtorKitNames.PATH_ID
+private val FIELD_ID = KtorKitNames.FIELD_ID
+private val FIELD_MAP_ID = KtorKitNames.FIELD_MAP_ID
+private val FORM_URL_ENCODED_ID = KtorKitNames.FORM_URL_ENCODED_ID
+private val PART_ID = KtorKitNames.PART_ID
+private val MULTIPART_ID = KtorKitNames.MULTIPART_ID
+private val BODY_ID = KtorKitNames.BODY_ID
 private val PLACEHOLDER_REGEX = Regex("""\{([A-Za-z_][A-Za-z0-9_]*)}""")
 
 private fun FirAnnotationContainer.findAnnotation(classId: ClassId): FirAnnotation? =

@@ -1,6 +1,7 @@
 package io.ktorkit
 
 import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.forms.FormBuilder
 import io.ktor.client.request.forms.FormDataContent
 import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.client.request.forms.formData
@@ -23,6 +24,8 @@ import io.ktor.http.encodeURLPathPart
 import io.ktor.utils.io.readUTF8Line
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.json.Json
@@ -55,7 +58,7 @@ class RequestBuilder internal constructor(
         map?.forEach { (k, v) -> queryBindings[k] = v }
     }
     fun headerMap(map: Map<String, Any?>?) = apply {
-        map?.forEach { (k, v) -> if (v != null) headerBindings += k to v.toString() }
+        map?.forEach { (k, v) -> header(k, v) }
     }
     fun body(value: Any?) = apply { requestBody = value }
     fun <T> bodyJson(value: T, serializer: SerializationStrategy<T>) = apply {
@@ -67,7 +70,7 @@ class RequestBuilder internal constructor(
         if (value != null) formFields += name to value.toString()
     }
     fun fieldMap(map: Map<String, Any?>?) = apply {
-        map?.forEach { (k, v) -> if (v != null) formFields += k to v.toString() }
+        map?.forEach { (k, v) -> field(k, v) }
     }
     fun multipart() = apply { isMultipart = true }
     fun part(name: String, fileName: String, value: Any?) = apply {
@@ -101,17 +104,18 @@ class RequestBuilder internal constructor(
      * The connection stays open for the lifetime of the collection, so nothing is
      * buffered into memory up front.
      */
-    fun <T> executeAsFlow(deserializer: DeserializationStrategy<T>): Flow<T> = channelFlow {
-        client.httpClient.prepareRequest { configureRequest() }.execute { response ->
-            val channel = response.bodyAsChannel()
-            while (true) {
-                val line = channel.readUTF8Line() ?: break
-                if (line.isNotBlank()) send(ktorkitJson.decodeFromString(deserializer, line))
-            }
-        }
-    }
+    fun <T> executeAsFlow(deserializer: DeserializationStrategy<T>): Flow<T> =
+        executeAsFlowOfString()
+            .filter { it.isNotBlank() }
+            .map { ktorkitJson.decodeFromString(deserializer, it) }
 
-    /** Streams the response body as raw lines, blank lines included. */
+    /**
+     * Streams the response body as raw lines, blank lines included. This is the single
+     * reader both streaming entry points are built on.
+     *
+     * `channelFlow` rather than `flow`: Ktor dispatches [execute] on its own coroutine on
+     * some targets (notably JS), which would violate `flow`'s context-preservation rule.
+     */
     fun executeAsFlowOfString(): Flow<String> = channelFlow {
         client.httpClient.prepareRequest { configureRequest() }.execute { response ->
             val channel = response.bodyAsChannel()
@@ -138,38 +142,31 @@ class RequestBuilder internal constructor(
         for ((k, v) in headerBindings) header(k, v)
         when {
             isMultipart -> setBody(
-                MultiPartFormDataContent(
-                    formData {
-                        for (p in multipartParts) {
-                            when (val v = p.value) {
-                                null -> Unit
-                                is ByteArray -> append(
-                                    key = p.name,
-                                    value = v,
-                                    headers = Headers.build {
-                                        if (p.fileName.isNotEmpty()) {
-                                            append(
-                                                HttpHeaders.ContentDisposition,
-                                                "filename=\"${p.fileName}\"",
-                                            )
-                                        }
-                                    },
-                                )
-                                else -> append(p.name, v.toString())
-                            }
-                        }
-                    }
-                )
+                MultiPartFormDataContent(formData { multipartParts.forEach { appendPart(it) } })
             )
             isFormEncoded -> setBody(
-                FormDataContent(Parameters.build {
-                    for ((k, v) in formFields) append(k, v)
-                })
+                FormDataContent(Parameters.build { formFields.forEach { (k, v) -> append(k, v) } })
             )
-            requestBody != null -> {
+            else -> requestBody?.let { body ->
                 if (isJsonBody) contentType(ContentType.Application.Json)
-                setBody(requestBody!!)
+                setBody(body)
             }
+        }
+    }
+
+    private fun FormBuilder.appendPart(part: MultipartPart) {
+        when (val value = part.value) {
+            null -> Unit
+            is ByteArray -> append(
+                key = part.name,
+                value = value,
+                headers = Headers.build {
+                    if (part.fileName.isNotEmpty()) {
+                        append(HttpHeaders.ContentDisposition, "filename=\"${part.fileName}\"")
+                    }
+                },
+            )
+            else -> append(part.name, value.toString())
         }
     }
 }

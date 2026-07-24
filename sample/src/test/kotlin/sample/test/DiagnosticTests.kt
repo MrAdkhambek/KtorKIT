@@ -11,7 +11,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCompilerApi::class)
-private fun compileBad(@org.intellij.lang.annotations.Language("kotlin") source: String): JvmCompilationResult {
+private fun compile(@org.intellij.lang.annotations.Language("kotlin") source: String): JvmCompilationResult {
     return KotlinCompilation().apply {
         sources = listOf(SourceFile.kotlin("Bad.kt", source))
         compilerPluginRegistrars = listOf(KtorKitCompilerPluginRegistrar())
@@ -21,50 +21,64 @@ private fun compileBad(@org.intellij.lang.annotations.Language("kotlin") source:
     }.compile()
 }
 
+/**
+ * Asserts the plugin rejected the snippet. Always attaches the compiler output, so a
+ * regression reports which diagnostics actually fired instead of a bare enum mismatch.
+ */
+private fun JvmCompilationResult.assertFailedWith(vararg expectedInMessage: String) {
+    assertEquals(
+        KotlinCompilation.ExitCode.COMPILATION_ERROR,
+        exitCode,
+        "expected a compile error. messages were:\n$messages",
+    )
+    for (expected in expectedInMessage) {
+        assertTrue(expected in messages, "expected \"$expected\" in messages, but got:\n$messages")
+    }
+}
+
+/** Asserts the snippet compiled cleanly, reporting the compiler output when it did not. */
+private fun JvmCompilationResult.assertCompiled() {
+    assertEquals(KotlinCompilation.ExitCode.OK, exitCode, messages)
+}
+
 class ContributesApiOnInterfaceCheckerTests {
     @Test fun `@ContributesAPI on a class produces error`() {
-        val result = compileBad(
+        val result = compile(
             """
             import io.ktorkit.ContributesAPI
             @ContributesAPI
             class BadOnClass
             """.trimIndent()
         )
-        assertEquals(KotlinCompilation.ExitCode.COMPILATION_ERROR, result.exitCode)
-        assertTrue(
-            "@ContributesAPI may only be applied to an interface" in result.messages,
-            "messages were:\n${result.messages}",
-        )
+        result.assertFailedWith("@ContributesAPI may only be applied to an interface")
     }
 
     @Test fun `@ContributesAPI on an object produces error`() {
-        val result = compileBad(
+        val result = compile(
             """
             import io.ktorkit.ContributesAPI
             @ContributesAPI
             object BadObject
             """.trimIndent()
         )
-        assertEquals(KotlinCompilation.ExitCode.COMPILATION_ERROR, result.exitCode)
-        assertTrue("@ContributesAPI may only be applied to an interface" in result.messages)
+        result.assertFailedWith("@ContributesAPI may only be applied to an interface")
     }
 
     @Test fun `@ContributesAPI on an abstract class produces error`() {
-        val result = compileBad(
+        val result = compile(
             """
             import io.ktorkit.ContributesAPI
             @ContributesAPI
             abstract class BadAbstract
             """.trimIndent()
         )
-        assertEquals(KotlinCompilation.ExitCode.COMPILATION_ERROR, result.exitCode)
-        assertTrue("@ContributesAPI may only be applied to an interface" in result.messages)
+        result.assertFailedWith("@ContributesAPI may only be applied to an interface")
     }
 }
 
 class HttpVerbCheckerTests {
     @Test fun `function with no HTTP verb produces error`() {
-        val result = compileBad(
+        val result = compile(
             """
             import io.ktorkit.ContributesAPI
             @ContributesAPI
@@ -73,15 +87,11 @@ class HttpVerbCheckerTests {
             }
             """.trimIndent()
         )
-        assertEquals(KotlinCompilation.ExitCode.COMPILATION_ERROR, result.exitCode)
-        assertTrue(
-            "must declare exactly one HTTP verb annotation" in result.messages,
-            "messages were:\n${result.messages}",
-        )
+        result.assertFailedWith("must declare exactly one HTTP verb annotation")
     }
 
     @Test fun `function with two HTTP verbs produces error`() {
-        val result = compileBad(
+        val result = compile(
             """
             import io.ktorkit.ContributesAPI
             import io.ktorkit.GET
@@ -94,26 +104,25 @@ class HttpVerbCheckerTests {
             }
             """.trimIndent()
         )
-        assertEquals(KotlinCompilation.ExitCode.COMPILATION_ERROR, result.exitCode)
-        assertTrue("declares more than one HTTP verb annotation" in result.messages)
+        result.assertFailedWith("declares more than one HTTP verb annotation")
     }
 
     @Test fun `function in non-ContributesAPI interface is not checked`() {
         // Not annotated -> our checker shouldn't fire even though no verb annotation present
-        val result = compileBad(
+        val result = compile(
             """
             interface NotMyApi {
                 suspend fun noVerbHere(): String
             }
             """.trimIndent()
         )
-        assertEquals(KotlinCompilation.ExitCode.OK, result.exitCode)
+        result.assertCompiled()
     }
 }
 
 class PathPlaceholderCheckerTests {
     @Test fun `extra @Path with no template placeholder produces error`() {
-        val result = compileBad(
+        val result = compile(
             """
             import io.ktorkit.ContributesAPI
             import io.ktorkit.GET
@@ -125,15 +134,11 @@ class PathPlaceholderCheckerTests {
             }
             """.trimIndent()
         )
-        assertEquals(KotlinCompilation.ExitCode.COMPILATION_ERROR, result.exitCode)
-        assertTrue(
-            "@Path(\"notInUrl\") has no matching {notInUrl} placeholder" in result.messages,
-            "messages were:\n${result.messages}",
-        )
+        result.assertFailedWith("@Path(\"notInUrl\") has no matching {notInUrl} placeholder")
     }
 
     @Test fun `template placeholder with no @Path param produces error`() {
-        val result = compileBad(
+        val result = compile(
             """
             import io.ktorkit.ContributesAPI
             import io.ktorkit.GET
@@ -145,15 +150,11 @@ class PathPlaceholderCheckerTests {
             }
             """.trimIndent()
         )
-        assertEquals(KotlinCompilation.ExitCode.COMPILATION_ERROR, result.exitCode)
-        assertTrue(
-            "URL template contains {commentId} but no @Path(\"commentId\")" in result.messages,
-            "messages were:\n${result.messages}",
-        )
+        result.assertFailedWith("URL template contains {commentId} but no @Path(\"commentId\")")
     }
 
     @Test fun `path with template and matching @Path is OK`() {
-        val result = compileBad(
+        val result = compile(
             """
             import io.ktorkit.ContributesAPI
             import io.ktorkit.GET
@@ -165,11 +166,11 @@ class PathPlaceholderCheckerTests {
             }
             """.trimIndent()
         )
-        assertEquals(KotlinCompilation.ExitCode.OK, result.exitCode)
+        result.assertCompiled()
     }
 
     @Test fun `multiple placeholders all matched is OK`() {
-        val result = compileBad(
+        val result = compile(
             """
             import io.ktorkit.ContributesAPI
             import io.ktorkit.GET
@@ -181,13 +182,13 @@ class PathPlaceholderCheckerTests {
             }
             """.trimIndent()
         )
-        assertEquals(KotlinCompilation.ExitCode.OK, result.exitCode)
+        result.assertCompiled()
     }
 }
 
 class FormEncodingCheckerTests {
     @Test fun `@Field without @FormUrlEncoded produces error`() {
-        val result = compileBad(
+        val result = compile(
             """
             import io.ktorkit.ContributesAPI
             import io.ktorkit.Field
@@ -199,15 +200,11 @@ class FormEncodingCheckerTests {
             }
             """.trimIndent()
         )
-        assertEquals(KotlinCompilation.ExitCode.COMPILATION_ERROR, result.exitCode)
-        assertTrue(
-            "requires the function to be annotated @FormUrlEncoded" in result.messages,
-            "messages were:\n${result.messages}",
-        )
+        result.assertFailedWith("requires the function to be annotated @FormUrlEncoded")
     }
 
     @Test fun `@FieldMap without @FormUrlEncoded produces error`() {
-        val result = compileBad(
+        val result = compile(
             """
             import io.ktorkit.ContributesAPI
             import io.ktorkit.FieldMap
@@ -219,12 +216,11 @@ class FormEncodingCheckerTests {
             }
             """.trimIndent()
         )
-        assertEquals(KotlinCompilation.ExitCode.COMPILATION_ERROR, result.exitCode)
-        assertTrue("requires the function to be annotated @FormUrlEncoded" in result.messages)
+        result.assertFailedWith("requires the function to be annotated @FormUrlEncoded")
     }
 
     @Test fun `@Field with @FormUrlEncoded is OK`() {
-        val result = compileBad(
+        val result = compile(
             """
             import io.ktorkit.ContributesAPI
             import io.ktorkit.Field
@@ -239,11 +235,11 @@ class FormEncodingCheckerTests {
             }
             """.trimIndent()
         )
-        assertEquals(KotlinCompilation.ExitCode.OK, result.exitCode, result.messages)
+        result.assertCompiled()
     }
 
     @Test fun `@Body without @FormUrlEncoded is unaffected`() {
-        val result = compileBad(
+        val result = compile(
             """
             import io.ktorkit.Body
             import io.ktorkit.ContributesAPI
@@ -255,13 +251,13 @@ class FormEncodingCheckerTests {
             }
             """.trimIndent()
         )
-        assertEquals(KotlinCompilation.ExitCode.OK, result.exitCode, result.messages)
+        result.assertCompiled()
     }
 }
 
 class MultipartCheckerTests {
     @Test fun `@Part without @Multipart produces error`() {
-        val result = compileBad(
+        val result = compile(
             """
             import io.ktorkit.ContributesAPI
             import io.ktorkit.POST
@@ -273,15 +269,11 @@ class MultipartCheckerTests {
             }
             """.trimIndent()
         )
-        assertEquals(KotlinCompilation.ExitCode.COMPILATION_ERROR, result.exitCode)
-        assertTrue(
-            "@Part requires the function to be annotated @Multipart" in result.messages,
-            "messages were:\n${result.messages}",
-        )
+        result.assertFailedWith("@Part requires the function to be annotated @Multipart")
     }
 
     @Test fun `@Part with @Multipart is OK`() {
-        val result = compileBad(
+        val result = compile(
             """
             import io.ktorkit.ContributesAPI
             import io.ktorkit.Multipart
@@ -298,11 +290,11 @@ class MultipartCheckerTests {
             }
             """.trimIndent()
         )
-        assertEquals(KotlinCompilation.ExitCode.OK, result.exitCode, result.messages)
+        result.assertCompiled()
     }
 
     @Test fun `@FormUrlEncoded plus @Multipart produces error`() {
-        val result = compileBad(
+        val result = compile(
             """
             import io.ktorkit.ContributesAPI
             import io.ktorkit.FormUrlEncoded
@@ -317,15 +309,11 @@ class MultipartCheckerTests {
             }
             """.trimIndent()
         )
-        assertEquals(KotlinCompilation.ExitCode.COMPILATION_ERROR, result.exitCode)
-        assertTrue(
-            "pick one body encoding" in result.messages,
-            "messages were:\n${result.messages}",
-        )
+        result.assertFailedWith("pick one body encoding")
     }
 
     @Test fun `@Field inside a @Multipart function produces error`() {
-        val result = compileBad(
+        val result = compile(
             """
             import io.ktorkit.ContributesAPI
             import io.ktorkit.Field
@@ -339,14 +327,13 @@ class MultipartCheckerTests {
             }
             """.trimIndent()
         )
-        assertEquals(KotlinCompilation.ExitCode.COMPILATION_ERROR, result.exitCode)
-        assertTrue("@FormUrlEncoded" in result.messages, "messages were:\n${result.messages}")
+        result.assertFailedWith("@FormUrlEncoded")
     }
 }
 
 class BodyEncodingConflictTests {
     @Test fun `@Body on a @Multipart function produces error`() {
-        val result = compileBad(
+        val result = compile(
             """
             import io.ktorkit.Body
             import io.ktorkit.ContributesAPI
@@ -364,15 +351,11 @@ class BodyEncodingConflictTests {
             }
             """.trimIndent()
         )
-        assertEquals(KotlinCompilation.ExitCode.COMPILATION_ERROR, result.exitCode)
-        assertTrue(
-            "@Body cannot be combined with" in result.messages,
-            "messages were:\n${result.messages}",
-        )
+        result.assertFailedWith("@Body cannot be combined with")
     }
 
     @Test fun `@Body on a @FormUrlEncoded function produces error`() {
-        val result = compileBad(
+        val result = compile(
             """
             import io.ktorkit.Body
             import io.ktorkit.ContributesAPI
@@ -387,15 +370,11 @@ class BodyEncodingConflictTests {
             }
             """.trimIndent()
         )
-        assertEquals(KotlinCompilation.ExitCode.COMPILATION_ERROR, result.exitCode)
-        assertTrue(
-            "@Body cannot be combined with" in result.messages,
-            "messages were:\n${result.messages}",
-        )
+        result.assertFailedWith("@Body cannot be combined with")
     }
 
     @Test fun `@Body alone remains valid`() {
-        val result = compileBad(
+        val result = compile(
             """
             import io.ktorkit.Body
             import io.ktorkit.ContributesAPI
@@ -407,7 +386,7 @@ class BodyEncodingConflictTests {
             }
             """.trimIndent()
         )
-        assertEquals(KotlinCompilation.ExitCode.OK, result.exitCode, result.messages)
+        result.assertCompiled()
     }
 }
 
@@ -415,7 +394,7 @@ class StreamingCompilationTests {
     // Note: the kotlinx-serialization plugin is not applied in this harness, so
     // these cases deliberately stick to Flow<String>, which needs no serializer.
     @Test fun `Flow of String return type compiles`() {
-        val result = compileBad(
+        val result = compile(
             """
             import io.ktorkit.ContributesAPI
             import io.ktorkit.GET
@@ -426,11 +405,11 @@ class StreamingCompilationTests {
             }
             """.trimIndent()
         )
-        assertEquals(KotlinCompilation.ExitCode.OK, result.exitCode, result.messages)
+        result.assertCompiled()
     }
 
     @Test fun `non-suspend Flow function is accepted by the verb checker`() {
-        val result = compileBad(
+        val result = compile(
             """
             import io.ktorkit.ContributesAPI
             import io.ktorkit.POST
@@ -441,13 +420,13 @@ class StreamingCompilationTests {
             }
             """.trimIndent()
         )
-        assertEquals(KotlinCompilation.ExitCode.OK, result.exitCode, result.messages)
+        result.assertCompiled()
     }
 }
 
 class NonSerializableTypeTests {
     @Test fun `non-Serializable return type reports a readable error`() {
-        val result = compileBad(
+        val result = compile(
             """
             import io.ktorkit.ContributesAPI
             import io.ktorkit.GET
@@ -460,19 +439,11 @@ class NonSerializableTypeTests {
             }
             """.trimIndent()
         )
-        assertEquals(KotlinCompilation.ExitCode.COMPILATION_ERROR, result.exitCode)
-        assertTrue(
-            "cannot build a serializer for" in result.messages,
-            "messages were:\n${result.messages}",
-        )
-        assertTrue(
-            "Annotate the type with @Serializable" in result.messages,
-            "messages were:\n${result.messages}",
-        )
+        result.assertFailedWith("cannot build a serializer for", "Annotate the type with @Serializable")
     }
 
     @Test fun `non-Serializable type does not surface an internal exception`() {
-        val result = compileBad(
+        val result = compile(
             """
             import io.ktorkit.ContributesAPI
             import io.ktorkit.GET
@@ -492,7 +463,7 @@ class NonSerializableTypeTests {
     }
 
     @Test fun `non-Serializable @Body reports a readable error`() {
-        val result = compileBad(
+        val result = compile(
             """
             import io.ktorkit.Body
             import io.ktorkit.ContributesAPI
@@ -506,17 +477,13 @@ class NonSerializableTypeTests {
             }
             """.trimIndent()
         )
-        assertEquals(KotlinCompilation.ExitCode.COMPILATION_ERROR, result.exitCode)
-        assertTrue(
-            "cannot build a serializer for" in result.messages,
-            "messages were:\n${result.messages}",
-        )
+        result.assertFailedWith("cannot build a serializer for")
     }
 }
 
 class ControlGroupTests {
     @Test fun `well-formed @ContributesAPI compiles cleanly`() {
-        val result = compileBad(
+        val result = compile(
             """
             import io.ktorkit.ContributesAPI
             import io.ktorkit.GET
@@ -529,11 +496,11 @@ class ControlGroupTests {
             }
             """.trimIndent()
         )
-        assertEquals(KotlinCompilation.ExitCode.OK, result.exitCode, result.messages)
+        result.assertCompiled()
     }
 
     @Test fun `interface with declared baseUrl compiles`() {
-        val result = compileBad(
+        val result = compile(
             """
             import io.ktorkit.ContributesAPI
             import io.ktorkit.GET
@@ -544,6 +511,6 @@ class ControlGroupTests {
             }
             """.trimIndent()
         )
-        assertEquals(KotlinCompilation.ExitCode.OK, result.exitCode, result.messages)
+        result.assertCompiled()
     }
 }

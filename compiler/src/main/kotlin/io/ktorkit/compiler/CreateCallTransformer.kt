@@ -12,17 +12,19 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.render
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
-import org.jetbrains.kotlin.name.FqName
+import org.jetbrains.kotlin.name.Name
 
 class CreateCallTransformer(
     private val pluginContext: IrPluginContext,
 ) : IrElementTransformerVoid() {
 
-    private val createFqn = FqName("io.ktorkit.create")
+    private val createName = Name.identifier("create")
 
     override fun visitCall(expression: IrCall): IrExpression {
         val function = expression.symbol.owner
-        if (function.kotlinFqName != createFqn) {
+        // Cheap name check first: this runs for every call in the module, and
+        // `kotlinFqName` rebuilds the whole parent chain on each evaluation.
+        if (function.name != createName || function.kotlinFqName != KtorKitNames.CREATE_FQ_NAME) {
             return super.visitCall(expression)
         }
 
@@ -40,7 +42,7 @@ class CreateCallTransformer(
         val implCtor = implClass.primaryConstructor
             ?: error("${implClass.kotlinFqName} must have a primary constructor")
 
-        val ctorValueParams = implCtor.parameters.count { it.kind == IrParameterKind.Regular }
+        val ctorValueParams = implCtor.regularParameters.size
         require(ctorValueParams == 1) {
             "${implClass.kotlinFqName}.<init> must take exactly one parameter (the KtorClient); " +
                 "found $ctorValueParams"
