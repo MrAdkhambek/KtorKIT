@@ -102,9 +102,17 @@ ktorkit/
 └── tests-mp/                     # The same suite on JVM, JS, and native
 ```
 
-## Quick Start
+## Adding to a Gradle build
 
-### 1. Apply the Gradle plugin
+Applying the plugin is the whole installation — it adds the `runtime` dependency to your
+main source set and puts the compiler plugin on `kotlinc`'s classpath. **Do not declare
+`com.adkhambek.ktor.kit:runtime` yourself.**
+
+You supply two things it cannot choose for you: the `kotlinx.serialization` plugin (for
+`@Serializable` request and response types) and a Ktor **engine** for each platform you
+target.
+
+### Kotlin/JVM
 
 ```kotlin
 // build.gradle.kts
@@ -113,10 +121,87 @@ plugins {
     kotlin("plugin.serialization") version "2.4.10"
     id("com.adkhambek.ktor.kit") version "<latest-version>"
 }
+
+dependencies {
+    implementation("io.ktor:ktor-client-cio:3.5.1")   // any JVM engine
+}
 ```
 
-Both the plugin and the runtime resolve from Maven Central, so no extra repository
-configuration is needed beyond the defaults:
+### Kotlin Multiplatform
+
+Declare your API in `commonMain`; the plugin adds the runtime there, so every target
+resolves its own variant. Engines are per-platform:
+
+```kotlin
+// build.gradle.kts
+plugins {
+    kotlin("multiplatform") version "2.4.10"
+    kotlin("plugin.serialization") version "2.4.10"
+    id("com.adkhambek.ktor.kit") version "<latest-version>"
+}
+
+kotlin {
+    jvm()
+    androidTarget()
+    iosArm64()
+    iosSimulatorArm64()
+
+    sourceSets {
+        // No KtorKIT dependency here — the plugin adds it to commonMain.
+        androidMain.dependencies { implementation("io.ktor:ktor-client-okhttp:3.5.1") }
+        jvmMain.dependencies    { implementation("io.ktor:ktor-client-cio:3.5.1") }
+        iosMain.dependencies    { implementation("io.ktor:ktor-client-darwin:3.5.1") }
+    }
+}
+```
+
+Engines by platform:
+
+| Platform | Engine artifact |
+|---|---|
+| JVM | `io.ktor:ktor-client-cio` · `ktor-client-okhttp` · `ktor-client-java` |
+| Android | `io.ktor:ktor-client-okhttp` · `ktor-client-android` |
+| iOS / macOS / watchOS / tvOS | `io.ktor:ktor-client-darwin` |
+| JS (Node/browser) | `io.ktor:ktor-client-js` |
+| Linux | `io.ktor:ktor-client-curl` |
+| Windows | `io.ktor:ktor-client-winhttp` |
+
+### With a version catalog
+
+```toml
+# gradle/libs.versions.toml
+[versions]
+kotlin = "2.4.10"
+ktor = "3.5.1"
+ktorkit = "<latest-version>"
+
+[libraries]
+ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+ktorkit = { id = "com.adkhambek.ktor.kit", version.ref = "ktorkit" }
+```
+
+```kotlin
+// build.gradle.kts
+plugins {
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ktorkit)
+}
+
+dependencies {
+    implementation(libs.ktor.client.cio)
+}
+```
+
+### Repositories
+
+Everything resolves from Maven Central, so the defaults are enough. If your build
+restricts repositories, `mavenCentral()` must be reachable from **both** blocks — the
+first resolves the plugin, the second the runtime it adds:
 
 ```kotlin
 // settings.gradle.kts
@@ -126,14 +211,24 @@ pluginManagement {
         mavenCentral()
     }
 }
+
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+    }
+}
 ```
 
-The Gradle plugin automatically adds the `runtime` dependency and wires the compiler plugin into `kotlinc`.
+### Kotlin version
 
-Your Kotlin version must match the one KtorKIT was built against (see [Versions](#versions)) —
-compiler plugins are bound to the compiler's internal APIs.
+> [!IMPORTANT]
+> Your Kotlin version must match the one KtorKIT was built against — **2.4.10**. Compiler
+> plugins bind to compiler internals that change between releases, so a mismatch fails the
+> build rather than degrading gracefully. See [Versions](#versions).
 
-### 2. Define your API
+## Quick Start
+
+### 1. Define your API
 
 ```kotlin
 import com.adkhambek.ktor.kit.*
@@ -156,7 +251,7 @@ interface PostsApi {
 }
 ```
 
-### 3. Create and use the client
+### 2. Create and use the client
 
 ```kotlin
 import io.ktor.client.HttpClient
